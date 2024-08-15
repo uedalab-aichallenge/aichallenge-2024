@@ -9,6 +9,7 @@
 #include <nav_msgs/msg/odometry.hpp>
 #include <optional>
 #include <rclcpp/rclcpp.hpp>
+#include <std_msgs/msg/int32.hpp>
 
 namespace simple_pure_pursuit {
 
@@ -26,6 +27,7 @@ class SimplePurePursuit : public rclcpp::Node {
   // subscribers
   rclcpp::Subscription<Odometry>::SharedPtr sub_kinematics_;
   rclcpp::Subscription<Trajectory>::SharedPtr sub_trajectory_;
+  rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr sub_pitstop_status_;
   
   // publishers
   rclcpp::Publisher<AckermannControlCommand>::SharedPtr pub_cmd_;
@@ -36,6 +38,7 @@ class SimplePurePursuit : public rclcpp::Node {
   // updated by subscribers
   Trajectory::SharedPtr trajectory_;
   Odometry::SharedPtr odometry_;
+  std_msgs::msg::Int32::SharedPtr pitstop_status_;
 
 
 
@@ -47,6 +50,7 @@ class SimplePurePursuit : public rclcpp::Node {
   const bool use_external_target_vel_;
   const double external_target_vel_;
 
+  bool pitstop_flag_;
 
  private:
   void onTimer();

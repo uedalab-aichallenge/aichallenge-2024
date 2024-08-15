@@ -9,7 +9,6 @@ class SetRouteClientAsync(Node):
         super().__init__("set_route_client_async")
         self.get_logger().info("started")
         self.sub = self.create_subscription(PoseStamped, "/goal_pose", self.callback, 1)
-        self.sub  # prevent unused variable warning
         self.cli = self.create_client(SetRoute, "/planning/mission_planning/set_route")
         while not self.cli.wait_for_service(timeout_sec=1.0):
             self.get_logger().info("service not available, waiting again...")

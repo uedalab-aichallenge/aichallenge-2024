@@ -22,7 +22,8 @@ SimplePurePursuit::SimplePurePursuit()
   lookahead_min_distance_(declare_parameter<float>("lookahead_min_distance", 1.0)),
   speed_proportional_gain_(declare_parameter<float>("speed_proportional_gain", 1.0)),
   use_external_target_vel_(declare_parameter<bool>("use_external_target_vel", false)),
-  external_target_vel_(declare_parameter<float>("external_target_vel", 0.0))
+  external_target_vel_(declare_parameter<float>("external_target_vel", 0.0)),
+  pitstop_flag_(false)
 {
   pub_cmd_ = create_publisher<AckermannControlCommand>("output/control_cmd", 1);
 
@@ -30,6 +31,19 @@ SimplePurePursuit::SimplePurePursuit()
     "input/kinematics", 1, [this](const Odometry::SharedPtr msg) { odometry_ = msg; });
   sub_trajectory_ = create_subscription<Trajectory>(
     "input/trajectory", 1, [this](const Trajectory::SharedPtr msg) { trajectory_ = msg; });
+  
+  sub_pitstop_status_ = create_subscription<std_msgs::msg::Int32>(
+    "aichallenge/pitstop/condition", 1, [this](const std_msgs::msg::Int32::SharedPtr msg) {
+      pitstop_status_ = msg; 
+
+      if (pitstop_status_->data > 500){
+        pitstop_flag_ = true;
+      }
+      else {
+        pitstop_flag_ = false;
+      }
+    }
+  );
 
   using namespace std::literals::chrono_literals;
   timer_ =
@@ -55,60 +69,76 @@ void SimplePurePursuit::onTimer()
     return;
   }
 
-  size_t closet_traj_point_idx =
+  size_t closest_traj_point_idx =
     findNearestIndex(trajectory_->points, odometry_->pose.pose.position);
 
   // publish zero command
   AckermannControlCommand cmd = zeroAckermannControlCommand(get_clock()->now());
 
-  if (
-    (closet_traj_point_idx == trajectory_->points.size() - 1) ||
-    (trajectory_->points.size() <= 5)) {
+  // get closest trajectory point from current position
+  TrajectoryPoint closest_traj_point = trajectory_->points.at(closest_traj_point_idx);
+
+  // calc longitudinal speed and acceleration
+  double target_longitudinal_vel =
+    use_external_target_vel_ ? external_target_vel_ : closest_traj_point.longitudinal_velocity_mps;
+  double current_longitudinal_vel = odometry_->twist.twist.linear.x;
+
+  double pitstop_x = 89626.625;
+  double pitstop_y = 43134.484375;
+
+  // 停止位置への距離を計算
+  double distance_to_final_point = std::hypot(
+    pitstop_x - odometry_->pose.pose.position.x,
+    pitstop_y - odometry_->pose.pose.position.y
+  );
+  
+  double stop_threshold = 2.0; // 停止とみなす閾値
+  double deceleration_distance = 20.0; // 減速を開始する距離
+
+  if (distance_to_final_point < stop_threshold && pitstop_flag_) {
+    // 停止位置に近いため停止する
     cmd.longitudinal.speed = 0.0;
-    cmd.longitudinal.acceleration = -10.0;
-    RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 1000 /*ms*/, "reached to the goal");
+    cmd.longitudinal.acceleration = -1000; // 減速
+  } else if (distance_to_final_point < deceleration_distance && pitstop_flag_) {
+    // 停止位置に近づいているため減速する
+    double deceleration = (current_longitudinal_vel * current_longitudinal_vel) / (2.0 * distance_to_final_point);
+    cmd.longitudinal.speed = std::max(0.0, current_longitudinal_vel - deceleration);
+    cmd.longitudinal.acceleration = -deceleration;
   } else {
-    // get closest trajectory point from current position
-    TrajectoryPoint closet_traj_point = trajectory_->points.at(closet_traj_point_idx);
-
-    // calc longitudinal speed and acceleration
-    double target_longitudinal_vel =
-      use_external_target_vel_ ? external_target_vel_ : closet_traj_point.longitudinal_velocity_mps;
-    double current_longitudinal_vel = odometry_->twist.twist.linear.x;
-
+    // 通常の速度制御
     cmd.longitudinal.speed = target_longitudinal_vel;
     cmd.longitudinal.acceleration =
       speed_proportional_gain_ * (target_longitudinal_vel - current_longitudinal_vel);
-
-    // calc lateral control
-    //// calc lookahead distance
-    double lookahead_distance = lookahead_gain_ * target_longitudinal_vel + lookahead_min_distance_;
-    //// calc center coordinate of rear wheel
-    double rear_x = odometry_->pose.pose.position.x -
-                    wheel_base_ / 2.0 * std::cos(odometry_->pose.pose.orientation.z);
-    double rear_y = odometry_->pose.pose.position.y -
-                    wheel_base_ / 2.0 * std::sin(odometry_->pose.pose.orientation.z);
-    //// search lookahead point
-    auto lookahead_point_itr = std::find_if(
-      trajectory_->points.begin() + closet_traj_point_idx, trajectory_->points.end(),
-      [&](const TrajectoryPoint & point) {
-        return std::hypot(point.pose.position.x - rear_x, point.pose.position.y - rear_y) >=
-               lookahead_distance;
-      });
-    if (lookahead_point_itr == trajectory_->points.end()) {
-      lookahead_point_itr = trajectory_->points.end() - 1;
-    }
-    double lookahead_point_x = lookahead_point_itr->pose.position.x;
-    double lookahead_point_y = lookahead_point_itr->pose.position.y;
-
-    // calc steering angle for lateral control
-    double alpha = std::atan2(lookahead_point_y - rear_y, lookahead_point_x - rear_x) -
-                   tf2::getYaw(odometry_->pose.pose.orientation);
-    cmd.lateral.steering_tire_angle =
-      std::atan2(2.0 * wheel_base_ * std::sin(alpha), lookahead_distance);
   }
+
+  // 横方向の制御を計算
+  double lookahead_distance = lookahead_gain_ * target_longitudinal_vel + lookahead_min_distance_;
+  double rear_x = odometry_->pose.pose.position.x -
+                  wheel_base_ / 2.0 * std::cos(odometry_->pose.pose.orientation.z);
+  double rear_y = odometry_->pose.pose.position.y -
+                  wheel_base_ / 2.0 * std::sin(odometry_->pose.pose.orientation.z);
+  
+  auto lookahead_point_itr = std::find_if(
+    trajectory_->points.begin() + closest_traj_point_idx, trajectory_->points.end(),
+    [&](const TrajectoryPoint & point) {
+      return std::hypot(point.pose.position.x - rear_x, point.pose.position.y - rear_y) >=
+             lookahead_distance;
+    });
+  if (lookahead_point_itr == trajectory_->points.end()) {
+    lookahead_point_itr = trajectory_->points.end() - 1;
+  }
+  
+  double lookahead_point_x = lookahead_point_itr->pose.position.x;
+  double lookahead_point_y = lookahead_point_itr->pose.position.y;
+
+  double alpha = std::atan2(lookahead_point_y - rear_y, lookahead_point_x - rear_x) -
+                 tf2::getYaw(odometry_->pose.pose.orientation);
+  cmd.lateral.steering_tire_angle =
+    std::atan2(2.0 * wheel_base_ * std::sin(alpha), lookahead_distance);
+
   pub_cmd_->publish(cmd);
 }
+
 
 bool SimplePurePursuit::subscribeMessageAvailable()
 {

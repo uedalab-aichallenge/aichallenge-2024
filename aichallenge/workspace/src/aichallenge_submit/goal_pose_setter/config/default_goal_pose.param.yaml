@@ -16,4 +16,12 @@
     half_goal.orientation.z: -0.9
     half_goal.orientation.w: 0.25
 
+    pitstop_goal.position.x: 89626.625
+    pitstop_goal.position.y: 43134.484375
+    pitstop_goal.position.z: -28.0
+    pitstop_goal.orientation.x: 0.0
+    pitstop_goal.orientation.y: 0.0
+    pitstop_goal.orientation.z: 0.8583754343434447
+    pitstop_goal.orientation.w: 0.5130220401851199
+
     goal_range: 10.0
