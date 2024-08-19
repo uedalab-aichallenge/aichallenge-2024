@@ -62,12 +62,50 @@ AckermannControlCommand zeroAckermannControlCommand(rclcpp::Time stamp)
   return cmd;
 }
 
+int SimplePurePursuit::lap_counter(double distance){
+    static int lap_cnt = 1;
+    static bool reached_flag = false;
+
+    double distance_th = 1.0;
+
+    if (distance < distance_th){
+        if(not reached_flag){
+            lap_cnt++;
+        }
+        reached_flag = true;
+    }
+    else{
+        reached_flag = false;
+    }
+
+    return lap_cnt;
+}
+
 void SimplePurePursuit::onTimer()
 {
   // check data
   if (!subscribeMessageAvailable()) {
     return;
   }
+
+  double pitstop_x = 89626.625;
+  double pitstop_y = 43134.484375;
+
+  // 停止位置への距離を計算
+  double distance_to_final_distance = std::hypot(
+    pitstop_x - odometry_->pose.pose.position.x,
+    pitstop_y - odometry_->pose.pose.position.y
+  );
+
+  double lap_x = 89653.7;
+  double lap_y = 43122.5;
+
+  double distance_to_lap_distance = std::hypot(
+    lap_x - odometry_->pose.pose.position.x,
+    lap_y - odometry_->pose.pose.position.y
+  );
+
+  int lapcnt = lap_counter(distance_to_lap_distance);
 
   size_t closest_traj_point_idx =
     findNearestIndex(trajectory_->points, odometry_->pose.pose.position);
@@ -82,33 +120,34 @@ void SimplePurePursuit::onTimer()
   double target_longitudinal_vel =
     use_external_target_vel_ ? external_target_vel_ : closest_traj_point.longitudinal_velocity_mps;
   double current_longitudinal_vel = odometry_->twist.twist.linear.x;
-
-  double pitstop_x = 89626.625;
-  double pitstop_y = 43134.484375;
-
-  // 停止位置への距離を計算
-  double distance_to_final_point = std::hypot(
-    pitstop_x - odometry_->pose.pose.position.x,
-    pitstop_y - odometry_->pose.pose.position.y
-  );
   
   double stop_threshold = 2.0; // 停止とみなす閾値
-  double deceleration_distance = 20.0; // 減速を開始する距離
+  double deceleration_distance = 20; // 減速を開始する距離
+  static long long int cnt = 0;
+  
+  if(lapcnt>1)
+    cnt++;
+  
+  std::cerr << cnt << ", " << lapcnt << "\n";
 
-  if (distance_to_final_point < stop_threshold && pitstop_flag_) {
+  if(distance_to_final_distance < stop_threshold && not pitstop_flag_){
+    cnt = 0;
+  }
+
+  if (distance_to_final_distance < stop_threshold && pitstop_flag_ && 7 > lapcnt && cnt > 1000) {
     // 停止位置に近いため停止する
     cmd.longitudinal.speed = 0.0;
     cmd.longitudinal.acceleration = -1000; // 減速
-  } else if (distance_to_final_point < deceleration_distance && pitstop_flag_) {
+  } else if (distance_to_final_distance < deceleration_distance && pitstop_flag_ && 7 > lapcnt && cnt > 1000) {
     // 停止位置に近づいているため減速する
-    double deceleration = (current_longitudinal_vel * current_longitudinal_vel) / (2.0 * distance_to_final_point);
+    double deceleration = (current_longitudinal_vel * current_longitudinal_vel) / (2.0 * distance_to_final_distance);
     cmd.longitudinal.speed = std::max(0.0, current_longitudinal_vel - deceleration);
     cmd.longitudinal.acceleration = -deceleration;
   } else {
     // 通常の速度制御
     cmd.longitudinal.speed = target_longitudinal_vel;
     cmd.longitudinal.acceleration =
-      speed_proportional_gain_ * (target_longitudinal_vel - current_longitudinal_vel);
+      speed_proportional_gain_ * (target_longitudinal_vel - current_longitudinal_vel)*100;
   }
 
   // 横方向の制御を計算

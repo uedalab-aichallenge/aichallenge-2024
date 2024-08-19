@@ -51,6 +51,7 @@ class SimplePurePursuit : public rclcpp::Node {
   const double external_target_vel_;
 
   bool pitstop_flag_;
+  int lap_counter(double distance);
 
  private:
   void onTimer();

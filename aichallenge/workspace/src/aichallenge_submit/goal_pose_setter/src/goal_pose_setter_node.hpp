@@ -34,6 +34,7 @@ private:
     void on_timer();
     void route_state_callback(const autoware_adapi_v1_msgs::msg::RouteState::SharedPtr msg);
     void odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg);
+    int lap_counter(double distance);
 
     rclcpp::Client<std_srvs::srv::SetBool>::SharedPtr ekf_trigger_client_;
     rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr goal_publisher_;

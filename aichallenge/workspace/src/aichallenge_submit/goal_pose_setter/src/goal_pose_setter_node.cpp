@@ -131,8 +131,32 @@ void GoalPosePublisher::route_state_callback(const autoware_adapi_v1_msgs::msg::
     is_started_ = true;
 }
 
+int GoalPosePublisher::lap_counter(double distance){
+    static int lap_cnt = 1;
+    static bool reached_flag = false;
+    static bool once_flag = false;
+
+    double distance_th = 1.0;
+
+    if (distance < distance_th){
+        if(not reached_flag){
+            lap_cnt++;
+        }
+        reached_flag = true;
+    }
+    else{
+        reached_flag = false;
+    }
+
+    return lap_cnt;
+}
+
 void GoalPosePublisher::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
 {
+    int lapcnt = lap_counter(tier4_autoware_utils::calcDistance2d(msg->pose.pose, goal_position_));
+
+    // std::cerr << lapcnt << "\n";
+
     if (!is_started_)
         return;
 
@@ -154,7 +178,7 @@ void GoalPosePublisher::odometry_callback(const nav_msgs::msg::Odometry::SharedP
 
     // Publish half goal pose for pitstop
     if(pitstop_flag_ == true && half_goal_pose_published_ == false && pitstop_goal_pose_published_ == false &&
-        tier4_autoware_utils::calcDistance2d(msg->pose.pose, goal_position_) < goal_range_) 
+        tier4_autoware_utils::calcDistance2d(msg->pose.pose, goal_position_) < goal_range_ && 6 > lapcnt)
     {
         auto goal_pose = std::make_shared<geometry_msgs::msg::PoseStamped>();
         goal_pose->header.stamp = this->get_clock()->now();
