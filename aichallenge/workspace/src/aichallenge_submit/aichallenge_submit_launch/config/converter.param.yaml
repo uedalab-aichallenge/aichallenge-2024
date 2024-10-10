@@ -4,7 +4,7 @@
     use_steer_fb: true
     is_debugging: false
     steer_pid:
-      kp: 150.0
+      kp: 250.0
       ki: 15.0
       kd: 0.0
       max: 8.0

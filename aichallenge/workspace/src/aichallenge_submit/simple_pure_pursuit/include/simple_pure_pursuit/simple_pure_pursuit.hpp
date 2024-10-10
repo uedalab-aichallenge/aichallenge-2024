@@ -10,6 +10,7 @@
 #include <nav_msgs/msg/odometry.hpp>
 #include <optional>
 #include <rclcpp/rclcpp.hpp>
+#include <rcl_interfaces/msg/set_parameters_result.hpp>
 
 namespace simple_pure_pursuit {
 
@@ -45,12 +46,17 @@ class SimplePurePursuit : public rclcpp::Node {
 
   // pure pursuit parameters
   const double wheel_base_;
-  const double lookahead_gain_;
+  double lookahead_gain_;
   const double lookahead_min_distance_;
-  const double speed_proportional_gain_;
+  double speed_proportional_gain_;
   const bool use_external_target_vel_;
   const double external_target_vel_;
-  const double steering_tire_angle_gain_;
+  double steering_tire_angle_gain_;
+  double speed_scale_;
+
+  OnSetParametersCallbackHandle::SharedPtr reset_param_handler_;
+
+  rcl_interfaces::msg::SetParametersResult parameter_callback(const std::vector<rclcpp::Parameter> &parameters);
 
 
  private:

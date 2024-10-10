@@ -23,7 +23,8 @@ SimplePurePursuit::SimplePurePursuit()
   speed_proportional_gain_(declare_parameter<float>("speed_proportional_gain", 1.0)),
   use_external_target_vel_(declare_parameter<bool>("use_external_target_vel", false)),
   external_target_vel_(declare_parameter<float>("external_target_vel", 0.0)),
-  steering_tire_angle_gain_(declare_parameter<float>("steering_tire_angle_gain", 1.0))
+  steering_tire_angle_gain_(declare_parameter<float>("steering_tire_angle_gain", 1.0)),
+  speed_scale_(declare_parameter<float>("speed_scale", 1.0))
 {
   pub_cmd_ = create_publisher<AckermannControlCommand>("output/control_cmd", 1);
   pub_raw_cmd_ = create_publisher<AckermannControlCommand>("output/raw_control_cmd", 1);
@@ -37,6 +38,10 @@ SimplePurePursuit::SimplePurePursuit()
   using namespace std::literals::chrono_literals;
   timer_ =
     rclcpp::create_timer(this, get_clock(), 30ms, std::bind(&SimplePurePursuit::onTimer, this));
+
+  auto parameter_change_cb = std::bind(&SimplePurePursuit::parameter_callback, this, std::placeholders::_1);
+  reset_param_handler_ = this->add_on_set_parameters_callback(parameter_change_cb);
+  
 }
 
 AckermannControlCommand zeroAckermannControlCommand(rclcpp::Time stamp)
@@ -79,7 +84,7 @@ void SimplePurePursuit::onTimer()
       use_external_target_vel_ ? external_target_vel_ : closet_traj_point.longitudinal_velocity_mps;
     double current_longitudinal_vel = odometry_->twist.twist.linear.x;
 
-    cmd.longitudinal.speed = target_longitudinal_vel;
+    cmd.longitudinal.speed = speed_scale_ * target_longitudinal_vel;
     cmd.longitudinal.acceleration =
       speed_proportional_gain_ * (target_longitudinal_vel - current_longitudinal_vel);
 
@@ -135,6 +140,31 @@ bool SimplePurePursuit::subscribeMessageAvailable()
   }
   return true;
 }
+
+rcl_interfaces::msg::SetParametersResult SimplePurePursuit::parameter_callback(const std::vector<rclcpp::Parameter> &parameters)
+{
+  auto result = rcl_interfaces::msg::SetParametersResult();
+  result.successful = true;
+
+  for (const auto &parameter : parameters) {
+    if (parameter.get_name() == "lookahead_gain") {
+      lookahead_gain_ = parameter.as_double();
+      RCLCPP_INFO(this->get_logger(), "lookahead_gain: %f", lookahead_gain_);
+    } else if (parameter.get_name() == "speed_proportional_gain") {
+      speed_proportional_gain_ = parameter.as_double();
+      RCLCPP_INFO(this->get_logger(), "speed_proportional_gain: %f", speed_proportional_gain_);
+    } else if (parameter.get_name() == "steering_tire_angle_gain") {
+      steering_tire_angle_gain_ = parameter.as_double();
+      RCLCPP_INFO(this->get_logger(), "steering_tire_angle_gain: %f", steering_tire_angle_gain_);
+    } else if (parameter.get_name() == "speed_scale") {
+      speed_scale_ = parameter.as_double();
+      RCLCPP_INFO(this->get_logger(), "speed_scale: %f", speed_scale_);
+    }
+  }
+
+  return result;
+}
+
 }  // namespace simple_pure_pursuit
 
 int main(int argc, char const * argv[])
