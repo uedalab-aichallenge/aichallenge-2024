@@ -57,6 +57,7 @@ DWANode::DWANode()
   this->declare_parameter("Y_OFFSET", 43127.796875);
   this->declare_parameter("OBS_SIZE", 0.3);
   this->declare_parameter("STEERING_TIRE_ANGLE_GAIN", 1.0);
+  this->declare_parameter("SPEED_PROPORTIONAL_GAIN", 1.0);
   this->declare_parameter<std::string>("LEFT_LANE_BOUND_FILE", "/aichallenge/workspace/src/aichallenge_submit/dwa/csv_files/outer_track_interpolated.csv");
   this->declare_parameter<std::string>("RIGHT_LANE_BOUND_FILE", "/aichallenge/workspace/src/aichallenge_submit/dwa/csv_files/inner_track_interpolated.csv");
   this->declare_parameter<std::string>("CENTER_LANE_LINE_FILE", "/aichallenge/workspace/src/aichallenge_submit/dwa/csv_files/center_lane_line.csv");
@@ -83,6 +84,7 @@ DWANode::DWANode()
   params_.X_OFFSET = this->get_parameter("X_OFFSET").as_double();
   params_.Y_OFFSET = this->get_parameter("Y_OFFSET").as_double();
   params_.OBS_SIZE = this->get_parameter("OBS_SIZE").as_double();
+  params_.SPEED_PROPORTIONAL_GAIN = this->get_parameter("SPEED_PROPORTIONAL_GAIN").as_double();
   params_.STEERING_TIRE_ANGLE_GAIN = this->get_parameter("STEERING_TIRE_ANGLE_GAIN").as_double();
   params_.LEFT_LANE_BOUND_FILE = this->get_parameter("LEFT_LANE_BOUND_FILE").as_string();
   params_.RIGHT_LANE_BOUND_FILE = this->get_parameter("RIGHT_LANE_BOUND_FILE").as_string();
@@ -258,6 +260,17 @@ void DWANode::timerCallback() {
       ackermann_cmd.longitudinal.speed = cmd_vel_msg.linear.x;
       ackermann_cmd.longitudinal.acceleration = 1.0;  // Adjust as needed
       ackermann_cmd.lateral.steering_tire_angle = steering_angle;
+
+      // 目標速度と現在の速度の差を計算
+      double speed_error = controller_->getRobot().getUV() - cmd_vel_msg.linear.x;
+
+      // 比例制御による加速度の計算
+      double acceleration = params_.SPEED_PROPORTIONAL_GAIN * speed_error;
+
+      std::cout << "speed_error: " << speed_error << std::endl;
+      std::cout << "acceleration: " << acceleration << std::endl;
+      ackermann_cmd.longitudinal.acceleration = 1.0;
+      // ackermann_cmd.longitudinal.acceleration = acceleration;
 
       pub_cmd_->publish(ackermann_cmd);
       AckermannControlCommand raw_cmd = ackermann_cmd;
