@@ -48,7 +48,6 @@ std::vector<Path> DWA::makePath(Robot &robot)
   max_velo = robot.getUV() + range_velo;
   min_velo = std::max(min_velo, params_.MIN_SPEED);
   max_velo = std::min(max_velo, params_.MAX_SPEED);
-
   if (min_ang_velo > max_ang_velo)
   {
     min_ang_velo = max_ang_velo - params_.YAWRATE_RESOLUTION;
@@ -80,9 +79,6 @@ std::vector<Path> DWA::makePath(Robot &robot)
     }
     count++;
   }
-  std::cout << "range_velo: " << range_velo << std::endl;
-  std::cout << "min_ang_velo: " << min_ang_velo << ", max_ang_velo: " << max_ang_velo << std::endl;
-  std::cout << "min_velo: " << min_velo << ", max_velo: " << max_velo << std::endl;
   return paths;
 }
 
@@ -200,7 +196,7 @@ double DWA::headingVelo(const Path &path) const
 
 std::vector<Obstacle> DWA::calcNearestObs(const Robot &state, const std::vector<Obstacle> &obstacles) const
 {
-  double area_dis_to_obs = 10.0; // パラメーター
+  double area_dis_to_obs = 30.0; // パラメーター
   std::vector<Obstacle> nearest_obs;
   for (const auto &obs : obstacles)
   {

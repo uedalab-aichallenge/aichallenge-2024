@@ -36,4 +36,6 @@ struct Parameters
   double Y_OFFSET;
 
   double OBS_SIZE;
+  double STEERING_TIRE_ANGLE_GAIN; // New parameter
+
 };
