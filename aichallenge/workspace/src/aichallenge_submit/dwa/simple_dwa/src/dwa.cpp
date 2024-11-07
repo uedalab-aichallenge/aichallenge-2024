@@ -48,6 +48,12 @@ std::vector<Path> DWA::makePath(Robot &robot)
   max_velo = robot.getUV() + range_velo;
   min_velo = std::max(min_velo, params_.MIN_SPEED);
   max_velo = std::min(max_velo, params_.MAX_SPEED);
+  // 直線部分のために速度範囲を広げる
+  if (robot.getUV() > params_.MIN_SPEED) {
+      min_velo = std::max(min_velo, params_.MIN_SPEED);
+      max_velo = std::min(max_velo, params_.MAX_SPEED);
+  }
+
   if (min_ang_velo > max_ang_velo)
   {
     min_ang_velo = max_ang_velo - params_.YAWRATE_RESOLUTION;
@@ -181,10 +187,24 @@ double DWA::headingAngle(const Path &path, double g_x, double g_y) const
   double last_y = path.getY().back();
   double last_th = path.getTh().back();
 
+  // double angle_to_goal = std::atan2(g_y - last_y, g_x - last_x);
+  // double score_angle = angle_to_goal - last_th;
+  // score_angle = std::abs(angleRangeCorrector(score_angle));
+  // score_angle = M_PI - score_angle;
+
+  // return score_angle;
+
+  // 目標への角度を計算
   double angle_to_goal = std::atan2(g_y - last_y, g_x - last_x);
-  double score_angle = angle_to_goal - last_th;
-  score_angle = std::abs(angleRangeCorrector(score_angle));
-  score_angle = M_PI - score_angle;
+  
+  // 現在の向きとの角度差を計算
+  double angle_diff = angle_to_goal - last_th;
+
+  // 角度を正規化
+  angle_diff = std::atan2(std::sin(angle_diff), std::cos(angle_diff)); // -πからπの範囲に正規化
+
+  // スコアを計算（角度差が小さいほど良い）
+  double score_angle = 1.0 - std::abs(angle_diff) / M_PI; // 0から1の範囲にスケーリング
 
   return score_angle;
 }
