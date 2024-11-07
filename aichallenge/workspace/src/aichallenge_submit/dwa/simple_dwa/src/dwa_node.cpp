@@ -57,9 +57,11 @@ DWANode::DWANode()
   this->declare_parameter("Y_OFFSET", 43127.796875);
   this->declare_parameter("OBS_SIZE", 0.3);
   this->declare_parameter("STEERING_TIRE_ANGLE_GAIN", 1.0);
+  this->declare_parameter("MAX_STEERING_CHANGE", 0.1);
   this->declare_parameter<std::string>("LEFT_LANE_BOUND_FILE", "/aichallenge/workspace/src/aichallenge_submit/dwa/csv_files/outer_track_interpolated.csv");
   this->declare_parameter<std::string>("RIGHT_LANE_BOUND_FILE", "/aichallenge/workspace/src/aichallenge_submit/dwa/csv_files/inner_track_interpolated.csv");
   this->declare_parameter<std::string>("CENTER_LANE_LINE_FILE", "/aichallenge/workspace/src/aichallenge_submit/dwa/csv_files/center_lane_line.csv");
+  // this->declare_parameter<std::string>("CENTER_LANE_LINE_FILE", "/aichallenge/workspace/src/aichallenge_submit/dwa/csv_files/traj_race_cl_out-in-out_v10.csv");
 
   params_.ROBOT_INIT_X = this->get_parameter("ROBOT_INIT_X").as_double();
   params_.ROBOT_INIT_Y = this->get_parameter("ROBOT_INIT_Y").as_double();
@@ -87,7 +89,7 @@ DWANode::DWANode()
   params_.LEFT_LANE_BOUND_FILE = this->get_parameter("LEFT_LANE_BOUND_FILE").as_string();
   params_.RIGHT_LANE_BOUND_FILE = this->get_parameter("RIGHT_LANE_BOUND_FILE").as_string();
   params_.CENTER_LANE_LINE_FILE = this->get_parameter("CENTER_LANE_LINE_FILE").as_string();
-  // std::cout << "!!!!!!!!!!!!!weight_angle: " << params_.WEIGHT_ANGLE << std::endl;
+  params_.MAX_STEERING_CHANGE = this->get_parameter("MAX_STEERING_CHANGE").as_double();
 
   // 障害物のロード
   std::vector<std::string> csv_files = {params_.LEFT_LANE_BOUND_FILE, params_.RIGHT_LANE_BOUND_FILE};
