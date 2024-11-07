@@ -256,7 +256,7 @@
     <!-- <param name="Y_OFFSET" value="43127.796875"/> -->
     <param name="OBS_SIZE" value="0.3"/>
     <param name="STEERING_TIRE_ANGLE_GAIN" value="8.5"/>
-    <param name="MAX_STEERING_TIRE_ANGLE" value="0.558"/>
+    <param name="MAX_STEERING_CHANGE" value="0.1"/>
     <!-- <param name="LEFT_LANE_BOUND_FILE" value="src/csv_files/outer_track_interpolated.csv"/>
     <param name="RIGHT_LANE_BOUND_FILE" value="src/csv_files/inner_track_interpolated.csv"/>
     <param name="CENTER_LANE_LINE_FILE" value="src/csv_files/center_lane_line.csv"/> -->
