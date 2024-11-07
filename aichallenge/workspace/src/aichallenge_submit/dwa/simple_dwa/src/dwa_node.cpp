@@ -257,6 +257,9 @@ void DWANode::timerCallback() {
       yaw_error = std::atan2(std::sin(yaw_error), std::cos(yaw_error));
 
       double steering_angle = -params_.STEERING_TIRE_ANGLE_GAIN * yaw_error;
+      double wheel_base_ = 2.14;
+      steering_angle = -params_.STEERING_TIRE_ANGLE_GAIN * std::atan2(2.0 * wheel_base_ * std::sin(yaw_error), params_.LOOKAHEAD_DISTANCE);
+
       ackermann_cmd.longitudinal.speed = cmd_vel_msg.linear.x;
       ackermann_cmd.longitudinal.acceleration = 1.0;  // Adjust as needed
       ackermann_cmd.lateral.steering_tire_angle = steering_angle;
