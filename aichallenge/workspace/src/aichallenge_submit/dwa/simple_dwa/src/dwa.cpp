@@ -211,7 +211,16 @@ double DWA::headingAngle(const Path &path, double g_x, double g_y) const
 
 double DWA::headingVelo(const Path &path) const
 {
-  return path.getUV();
+  // return path.getUV();
+
+  double velocity = path.getUV();
+  double max_velocity = params_.MAX_SPEED; // 最大速度を取得
+
+  // スコアを計算（速度が高いほど良い）
+  double score_velocity = velocity / max_velocity; // 0から1の範囲にスケーリング
+
+  // スコアが1を超えないように制限
+  return std::min(score_velocity, 1.0);
 }
 
 std::vector<Obstacle> DWA::calcNearestObs(const Robot &state, const std::vector<Obstacle> &obstacles) const
