@@ -251,7 +251,7 @@ void DWANode::timerCallback() {
       double dx = opt_path.getX()[path_size - 1] - opt_path.getX()[path_size - 2];
       double dy = opt_path.getY()[path_size - 1] - opt_path.getY()[path_size - 2];
       double desired_yaw = std::atan2(dy, dx);
-      double current_yaw = controller_->getRobot().getTh();
+      double current_yaw =   controller_->getRobot().getTh();
       double yaw_error = desired_yaw - current_yaw;
 
       yaw_error = std::atan2(std::sin(yaw_error), std::cos(yaw_error));
@@ -262,8 +262,7 @@ void DWANode::timerCallback() {
       ackermann_cmd.lateral.steering_tire_angle = steering_angle;
 
       // 目標速度と現在の速度の差を計算
-      double speed_error = controller_->getRobot().getUV() - cmd_vel_msg.linear.x;
-
+      double speed_error = controller_->getRobot().getUV() - odometry_->twist.twist.linear.x;
       // 比例制御による加速度の計算
       double acceleration = params_.SPEED_PROPORTIONAL_GAIN * speed_error;
 
