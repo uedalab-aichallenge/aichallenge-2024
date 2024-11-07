@@ -238,43 +238,47 @@ void DWANode::timerCallback() {
   ackermann_cmd.stamp = this->get_clock()->now();
 
   if (!traj_opt.empty()) {
-    // Publish cmd_vel as before
-    geometry_msgs::msg::Twist cmd_vel_msg;
-    cmd_vel_msg.linear.x = controller_->getRobot().getUV();
-    cmd_vel_msg.angular.z = controller_->getRobot().getUTh();
-    cmd_vel_pub_->publish(cmd_vel_msg);
-
-    // Compute steering tire angle based on the optimal path
     Path opt_path = traj_opt.back();
     size_t path_size = opt_path.getX().size();
     if (path_size >= 2) {
-      double dx = opt_path.getX()[path_size - 1] - opt_path.getX()[path_size - 2];
-      double dy = opt_path.getY()[path_size - 1] - opt_path.getY()[path_size - 2];
+      double dx = opt_path.getX()[1] - opt_path.getX()[0];
+      double dy = opt_path.getY()[1] - opt_path.getY()[0];
       double desired_yaw = std::atan2(dy, dx);
-      double current_yaw =   controller_->getRobot().getTh();
-      double yaw_error = desired_yaw - current_yaw;
-
+      double yaw_error = desired_yaw - th;
+      std::cout << "yaw_error: " << yaw_error << std::endl;
       yaw_error = std::atan2(std::sin(yaw_error), std::cos(yaw_error));
+      std::cout << "yaw_error: " << yaw_error << std::endl;
 
-      double steering_angle = -params_.STEERING_TIRE_ANGLE_GAIN * yaw_error;
-      ackermann_cmd.longitudinal.speed = cmd_vel_msg.linear.x;
-      ackermann_cmd.longitudinal.acceleration = 1.0;  // Adjust as needed
-      ackermann_cmd.lateral.steering_tire_angle = steering_angle;
+      //////////////////////////////////////////////////////////////////
+      double dth = opt_path.getTh()[1] - opt_path.getTh()[0];
+      double dt = params_.DT;
 
-      // 目標速度と現在の速度の差を計算
-      double speed_error = controller_->getRobot().getUV() - odometry_->twist.twist.linear.x;
-      // 比例制御による加速度の計算
+      // 速度と角速度を計算
+      double new_u_v = std::hypot(dx, dy) / dt;
+      double new_u_th = dth / dt;
+
+      //////////////////////////////////////////////////////////////////
+
+
+      double steering_angle = params_.STEERING_TIRE_ANGLE_GAIN * yaw_error;
+      double speed_error = new_u_v - odometry_->twist.twist.linear.x;
       double acceleration = params_.SPEED_PROPORTIONAL_GAIN * speed_error;
-
-      std::cout << "speed_error: " << speed_error << std::endl;
-      std::cout << "acceleration: " << acceleration << std::endl;
-      ackermann_cmd.longitudinal.acceleration = 1.0;
+      ackermann_cmd.longitudinal.acceleration = 1.0; // Adjust as needed
       // ackermann_cmd.longitudinal.acceleration = acceleration;
-
+      ackermann_cmd.longitudinal.speed = new_u_v;
+      ackermann_cmd.lateral.steering_tire_angle = steering_angle;
       pub_cmd_->publish(ackermann_cmd);
+
       AckermannControlCommand raw_cmd = ackermann_cmd;
       raw_cmd.lateral.steering_tire_angle /= params_.STEERING_TIRE_ANGLE_GAIN;  // Invert the gain for raw angle
       pub_raw_cmd_->publish(raw_cmd);
+
+      // ackermann_cmd.longitudinal.acceleration = acceleration;
+
+      geometry_msgs::msg::Twist cmd_vel_msg;
+      cmd_vel_msg.linear.x = new_u_v;
+      cmd_vel_msg.angular.z = new_u_th;
+      cmd_vel_pub_->publish(cmd_vel_msg);
     } else {
       // Handle cases with insufficient path points
       ackermann_cmd.longitudinal.speed = 0.0;
