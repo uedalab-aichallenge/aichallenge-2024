@@ -38,5 +38,6 @@ struct Parameters
   double OBS_SIZE;
   double STEERING_TIRE_ANGLE_GAIN; // New parameter
   double MAX_STEERING_CHANGE;      // New parameter
-
+  double OUTPUT_ACCELERATION;     // New parameter
+  double SPEED_PROPORTIONAL_GAIN; // New parameter
 };

@@ -62,7 +62,6 @@ std::vector<Path> DWA::makePath(Robot &robot)
   {
     min_velo = max_velo - params_.V_RESOLUTION;
   }
-
   // 全てのpathのリスト
   std::vector<Path> paths;
   int count = 0;
@@ -196,7 +195,7 @@ double DWA::headingAngle(const Path &path, double g_x, double g_y) const
 
   // 目標への角度を計算
   double angle_to_goal = std::atan2(g_y - last_y, g_x - last_x);
-  
+
   // 現在の向きとの角度差を計算
   double angle_diff = angle_to_goal - last_th;
 

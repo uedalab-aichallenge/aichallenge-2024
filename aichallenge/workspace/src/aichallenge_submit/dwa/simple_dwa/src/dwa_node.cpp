@@ -58,6 +58,8 @@ DWANode::DWANode()
   this->declare_parameter("OBS_SIZE", 0.3);
   this->declare_parameter("STEERING_TIRE_ANGLE_GAIN", 1.0);
   this->declare_parameter("MAX_STEERING_CHANGE", 0.1);
+  this->declare_parameter("OUTPUT_ACCELERATION", 1.0);
+  this->declare_parameter("SPEED_PROPORTIONAL_GAIN", 1.0);
   this->declare_parameter<std::string>("LEFT_LANE_BOUND_FILE", "/aichallenge/workspace/src/aichallenge_submit/dwa/csv_files/outer_track_interpolated.csv");
   this->declare_parameter<std::string>("RIGHT_LANE_BOUND_FILE", "/aichallenge/workspace/src/aichallenge_submit/dwa/csv_files/inner_track_interpolated.csv");
   this->declare_parameter<std::string>("CENTER_LANE_LINE_FILE", "/aichallenge/workspace/src/aichallenge_submit/dwa/csv_files/center_lane_line.csv");
@@ -90,7 +92,8 @@ DWANode::DWANode()
   params_.RIGHT_LANE_BOUND_FILE = this->get_parameter("RIGHT_LANE_BOUND_FILE").as_string();
   params_.CENTER_LANE_LINE_FILE = this->get_parameter("CENTER_LANE_LINE_FILE").as_string();
   params_.MAX_STEERING_CHANGE = this->get_parameter("MAX_STEERING_CHANGE").as_double();
-
+  params_.OUTPUT_ACCELERATION = this->get_parameter("OUTPUT_ACCELERATION").as_double();
+  params_.SPEED_PROPORTIONAL_GAIN = this->get_parameter("SPEED_PROPORTIONAL_GAIN").as_double();
   // 障害物のロード
   std::vector<std::string> csv_files = {params_.LEFT_LANE_BOUND_FILE, params_.RIGHT_LANE_BOUND_FILE};
   obstacles_ = loadObstacles(csv_files, params_);
@@ -258,7 +261,13 @@ void DWANode::timerCallback() {
 
       double steering_angle = -params_.STEERING_TIRE_ANGLE_GAIN * yaw_error;
       ackermann_cmd.longitudinal.speed = cmd_vel_msg.linear.x;
-      ackermann_cmd.longitudinal.acceleration = 1.0;  // Adjust as needed
+      double speed_error = controller_->getRobot().getUV() - odometry_->twist.twist.linear.x;
+      double acceleration = params_.SPEED_PROPORTIONAL_GAIN * speed_error;
+      // if (acceleration < 0.2) {
+      //   acceleration = 0.2;
+      // }
+      ackermann_cmd.longitudinal.acceleration = acceleration; // Adjust as needed
+      // ackermann_cmd.longitudinal.acceleration = params_.OUTPUT_ACCELERATION; // Adjust as needed
       ackermann_cmd.lateral.steering_tire_angle = steering_angle;
 
       pub_cmd_->publish(ackermann_cmd);
