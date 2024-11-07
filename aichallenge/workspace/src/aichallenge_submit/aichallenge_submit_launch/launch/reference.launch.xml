@@ -208,7 +208,7 @@
   </group>
 
   <!-- Pure Pursuit -->
-  <let name="steering_tire_angle_gain_var" value="1.0" if="$(var simulation)"/>
+  <!-- <let name="steering_tire_angle_gain_var" value="1.0" if="$(var simulation)"/>
   <let name="steering_tire_angle_gain_var" value="1.639" unless="$(var simulation)"/>
 
   <node pkg="simple_pure_pursuit" exec="simple_pure_pursuit" name="simple_pure_pursuit_node" output="screen">
@@ -222,6 +222,38 @@
     <remap from="input/kinematics" to="/localization/kinematic_state"/>
     <remap from="input/trajectory" to="/planning/scenario_planning/trajectory"/>
     <remap from="output/control_cmd" to="/control/command/control_cmd"/>
+  </node> -->
+
+  <!-- DWA -->
+  <node pkg="simple_dwa" exec="simple_dwa" name="simple_dwa" output="screen">
+    <param name="ROBOT_INIT_X" value="5.0"/>
+    <param name="ROBOT_INIT_Y" value="-5.0"/>
+    <param name="ROBOT_INIT_TH" value="2.7"/>
+    <param name="DT" value="0.1"/>
+    <param name="MAX_SPEED" value="5.55556"/>
+    <param name="MIN_SPEED" value="0.0"/>
+    <param name="MAX_YAWRATE" value="3.14"/>
+    <param name="MIN_YAWRATE" value="-3.14"/>
+    <param name="MAX_ACCEL" value="1.0"/>
+    <param name="MAX_DYAWRATE" value="3.0"/>
+    <param name="V_RESOLUTION" value="0.04"/>
+    <param name="YAWRATE_RESOLUTION" value="0.04"/>
+    <param name="PREDICT_TIME" value="2.0"/>
+    <param name="ROBOT_RADIUS" value="0.2"/>
+    <param name="WEIGHT_ANGLE" value="0.04"/>
+    <param name="WEIGHT_VELOCITY" value="1.2"/>
+    <param name="WEIGHT_OBSTACLE" value="1000.0"/>
+    <param name="WEIGHT_DISTANCE" value="1.0"/>
+    <param name="LOOKAHEAD_DISTANCE" value="0.05"/>
+    <param name="X_OFFSET" value="89633.15625"/>
+    <param name="Y_OFFSET" value="43127.796875"/>
+    <param name="OBS_SIZE" value="0.3"/>
+
+    <remap from="input/kinematics" to="/localization/kinematic_state"/>
+    <remap from="input/trajectory" to="/planning/scenario_planning/trajectory"/>
+    <remap from="output/control_cmd" to="/control/command/control_cmd"/>
+    <param from="$(find-pkg-share simple_dwa)/config/comfig.yaml" />
+    <!-- <param name="config" value="$(find simple_dwa)/config/config.yaml"/> -->
   </node>
 
   <!-- Map -->
