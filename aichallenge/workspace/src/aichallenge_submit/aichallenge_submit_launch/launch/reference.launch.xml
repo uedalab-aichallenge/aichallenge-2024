@@ -258,7 +258,7 @@
     <param name="STEERING_TIRE_ANGLE_GAIN" value="8.5"/>
     <param name="MAX_STEERING_CHANGE" value="0.1"/>
     <param name="OUTPUT_ACCELERATION" value="0.5"/>
-    <param name="SPEED_PROPORTIONAL_GAIN" value="1000.0"/>
+    <param name="SPEED_PROPORTIONAL_GAIN" value="200.0"/>
     <!-- <param name="LEFT_LANE_BOUND_FILE" value="src/csv_files/outer_track_interpolated.csv"/>
     <param name="RIGHT_LANE_BOUND_FILE" value="src/csv_files/inner_track_interpolated.csv"/>
     <param name="CENTER_LANE_LINE_FILE" value="src/csv_files/center_lane_line.csv"/> -->
