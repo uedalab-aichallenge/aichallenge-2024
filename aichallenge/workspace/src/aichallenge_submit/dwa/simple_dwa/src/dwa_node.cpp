@@ -62,7 +62,7 @@ DWANode::DWANode()
   this->declare_parameter("SPEED_PROPORTIONAL_GAIN", 1.0);
   this->declare_parameter<std::string>("LEFT_LANE_BOUND_FILE", "/aichallenge/workspace/src/aichallenge_submit/dwa/csv_files/outer_track_interpolated.csv");
   this->declare_parameter<std::string>("RIGHT_LANE_BOUND_FILE", "/aichallenge/workspace/src/aichallenge_submit/dwa/csv_files/inner_track_interpolated.csv");
-  this->declare_parameter<std::string>("CENTER_LANE_LINE_FILE", "/aichallenge/workspace/src/aichallenge_submit/dwa/csv_files/center_lane_line.csv");
+  this->declare_parameter<std::string>("CENTER_LANE_LINE_FILE", "/aichallenge/workspace/src/aichallenge_submit/dwa/csv_files/traj_race_cl_out-in-in.csv");
   // this->declare_parameter<std::string>("CENTER_LANE_LINE_FILE", "/aichallenge/workspace/src/aichallenge_submit/dwa/csv_files/traj_race_cl_out-in-out_v10.csv");
 
   params_.ROBOT_INIT_X = this->get_parameter("ROBOT_INIT_X").as_double();
