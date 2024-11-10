@@ -242,42 +242,16 @@ void DWANode::timerCallback() {
   ackermann_cmd.stamp = this->get_clock()->now();
 
   if (!traj_opt.empty()) {
-    // Publish cmd_vel as before
-    // geometry_msgs::msg::Twist cmd_vel_msg;
-    // cmd_vel_msg.linear.x = controller_->getRobot().getUV();
-    // cmd_vel_msg.angular.z = controller_->getRobot().getUTh();
-    // cmd_vel_pub_->publish(cmd_vel_msg);
-    // double wheel_base_ = 2.14;
-    // double lookahead_distance = 10.0;
     geometry_msgs::msg::Twist cmd_vel_msg;
     cmd_vel_msg.linear.x = controller_->getRobot().getUV();
     cmd_vel_msg.angular.z = controller_->getRobot().getUTh();
-    // cmd_vel_msg.angular.z = controller_->getRobot().getUTh() * params_.STEERING_TIRE_ANGLE_GAIN;
-    cmd_vel_msg.angular.z *= (params_.LOOKAHEAD_DISTANCE / params_.WHEEL_BASE); // ルックアヘッド距離に基づく調整
+    cmd_vel_msg.angular.z *= (params_.LOOKAHEAD_DISTANCE / params_.WHEEL_BASE);
     cmd_vel_pub_->publish(cmd_vel_msg);
 
     // Compute steering tire angle based on the optimal path
     Path opt_path = traj_opt.back();
     size_t path_size = opt_path.getX().size();
     if (path_size >= 2) {
-      // double dx = opt_path.getX()[path_size - 1] - opt_path.getX()[path_size - 2];
-      // double dy = opt_path.getY()[path_size - 1] - opt_path.getY()[path_size - 2];
-      // double desired_yaw = std::atan2(dy, dx);
-      // double current_yaw = controller_->getRobot().getTh();
-      // double yaw_error = desired_yaw - current_yaw;
-
-      // yaw_error = std::atan2(std::sin(yaw_error), std::cos(yaw_error));
-
-      // double steering_angle = -params_.STEERING_TIRE_ANGLE_GAIN * yaw_error;
-      // ackermann_cmd.longitudinal.speed = cmd_vel_msg.linear.x;
-      // ackermann_cmd.longitudinal.acceleration = 1.0;  // Adjust as needed
-      // ackermann_cmd.lateral.steering_tire_angle = steering_angle;
-
-      // pub_cmd_->publish(ackermann_cmd);
-      // AckermannControlCommand raw_cmd = ackermann_cmd;
-      // raw_cmd.lateral.steering_tire_angle /= params_.STEERING_TIRE_ANGLE_GAIN;  // Invert the gain for raw angle
-      // pub_raw_cmd_->publish(raw_cmd);
-
       double dx = opt_path.getX()[path_size - 1] - opt_path.getX()[path_size - 2];
       double dy = opt_path.getY()[path_size - 1] - opt_path.getY()[path_size - 2];
       double desired_yaw = std::atan2(dy, dx);
@@ -294,7 +268,7 @@ void DWANode::timerCallback() {
       std::cout << "cmd_vel_msg.linear.x: " << cmd_vel_msg.linear.x << std::endl;
       std::cout << "cmd_vel_msg.linear.x: " << cmd_vel_msg.linear.x << std::endl;
       double speed_proportional_gain = 4.0;
-      double desired_speed = std::max(params_.SPEED_PROPORTIONAL_GAIN, cmd_vel_msg.linear.x); // 計画された速度を0.1以上に制限
+      double desired_speed = std::max(params_.SPEED_PROPORTIONAL_GAIN, cmd_vel_msg.linear.x);
       double current_speed = controller_->getRobot().getUV(); // 現在の速度
       double speed_difference = desired_speed - current_speed;
 
