@@ -58,6 +58,8 @@ DWANode::DWANode()
   this->declare_parameter("OBS_SIZE", 0.3);
   this->declare_parameter("STEERING_TIRE_ANGLE_GAIN", 1.0);
   this->declare_parameter("MAX_STEERING_CHANGE", 0.1);
+  this->declare_parameter("WHEEL_BASE", 2.14);
+  this->declare_parameter("SPEED_PROPORTIONAL_GAIN", 4.0);
   this->declare_parameter<std::string>("LEFT_LANE_BOUND_FILE", "/aichallenge/workspace/src/aichallenge_submit/dwa/csv_files/outer_track_interpolated.csv");
   this->declare_parameter<std::string>("RIGHT_LANE_BOUND_FILE", "/aichallenge/workspace/src/aichallenge_submit/dwa/csv_files/inner_track_interpolated.csv");
   this->declare_parameter<std::string>("CENTER_LANE_LINE_FILE", "/aichallenge/workspace/src/aichallenge_submit/dwa/csv_files/center_lane_line.csv");
@@ -90,6 +92,8 @@ DWANode::DWANode()
   params_.RIGHT_LANE_BOUND_FILE = this->get_parameter("RIGHT_LANE_BOUND_FILE").as_string();
   params_.CENTER_LANE_LINE_FILE = this->get_parameter("CENTER_LANE_LINE_FILE").as_string();
   params_.MAX_STEERING_CHANGE = this->get_parameter("MAX_STEERING_CHANGE").as_double();
+  params_.WHEEL_BASE = this->get_parameter("WHEEL_BASE").as_double();
+  params_.SPEED_PROPORTIONAL_GAIN = this->get_parameter("SPEED_PROPORTIONAL_GAIN").as_double();
 
   // 障害物のロード
   std::vector<std::string> csv_files = {params_.LEFT_LANE_BOUND_FILE, params_.RIGHT_LANE_BOUND_FILE};
@@ -239,15 +243,41 @@ void DWANode::timerCallback() {
 
   if (!traj_opt.empty()) {
     // Publish cmd_vel as before
+    // geometry_msgs::msg::Twist cmd_vel_msg;
+    // cmd_vel_msg.linear.x = controller_->getRobot().getUV();
+    // cmd_vel_msg.angular.z = controller_->getRobot().getUTh();
+    // cmd_vel_pub_->publish(cmd_vel_msg);
+    // double wheel_base_ = 2.14;
+    // double lookahead_distance = 10.0;
     geometry_msgs::msg::Twist cmd_vel_msg;
     cmd_vel_msg.linear.x = controller_->getRobot().getUV();
     cmd_vel_msg.angular.z = controller_->getRobot().getUTh();
+    // cmd_vel_msg.angular.z = controller_->getRobot().getUTh() * params_.STEERING_TIRE_ANGLE_GAIN;
+    cmd_vel_msg.angular.z *= (params_.LOOKAHEAD_DISTANCE / params_.WHEEL_BASE); // ルックアヘッド距離に基づく調整
     cmd_vel_pub_->publish(cmd_vel_msg);
 
     // Compute steering tire angle based on the optimal path
     Path opt_path = traj_opt.back();
     size_t path_size = opt_path.getX().size();
     if (path_size >= 2) {
+      // double dx = opt_path.getX()[path_size - 1] - opt_path.getX()[path_size - 2];
+      // double dy = opt_path.getY()[path_size - 1] - opt_path.getY()[path_size - 2];
+      // double desired_yaw = std::atan2(dy, dx);
+      // double current_yaw = controller_->getRobot().getTh();
+      // double yaw_error = desired_yaw - current_yaw;
+
+      // yaw_error = std::atan2(std::sin(yaw_error), std::cos(yaw_error));
+
+      // double steering_angle = -params_.STEERING_TIRE_ANGLE_GAIN * yaw_error;
+      // ackermann_cmd.longitudinal.speed = cmd_vel_msg.linear.x;
+      // ackermann_cmd.longitudinal.acceleration = 1.0;  // Adjust as needed
+      // ackermann_cmd.lateral.steering_tire_angle = steering_angle;
+
+      // pub_cmd_->publish(ackermann_cmd);
+      // AckermannControlCommand raw_cmd = ackermann_cmd;
+      // raw_cmd.lateral.steering_tire_angle /= params_.STEERING_TIRE_ANGLE_GAIN;  // Invert the gain for raw angle
+      // pub_raw_cmd_->publish(raw_cmd);
+
       double dx = opt_path.getX()[path_size - 1] - opt_path.getX()[path_size - 2];
       double dy = opt_path.getY()[path_size - 1] - opt_path.getY()[path_size - 2];
       double desired_yaw = std::atan2(dy, dx);
@@ -257,14 +287,42 @@ void DWANode::timerCallback() {
       yaw_error = std::atan2(std::sin(yaw_error), std::cos(yaw_error));
 
       double steering_angle = -params_.STEERING_TIRE_ANGLE_GAIN * yaw_error;
-      ackermann_cmd.longitudinal.speed = cmd_vel_msg.linear.x;
-      ackermann_cmd.longitudinal.acceleration = 1.0;  // Adjust as needed
+
+      // 現在の速度と計画された速度の差を考慮して加速度を調整
+      std::cout << "cmd_vel_msg.linear.x: " << cmd_vel_msg.linear.x << std::endl;
+      std::cout << "cmd_vel_msg.linear.x: " << cmd_vel_msg.linear.x << std::endl;
+      std::cout << "cmd_vel_msg.linear.x: " << cmd_vel_msg.linear.x << std::endl;
+      std::cout << "cmd_vel_msg.linear.x: " << cmd_vel_msg.linear.x << std::endl;
+      double speed_proportional_gain = 4.0;
+      double desired_speed = std::max(params_.SPEED_PROPORTIONAL_GAIN, cmd_vel_msg.linear.x); // 計画された速度を0.1以上に制限
+      double current_speed = controller_->getRobot().getUV(); // 現在の速度
+      double speed_difference = desired_speed - current_speed;
+
+      // 加速度を制御
+      double max_acceleration = 1.0; // 最大加速度を設定
+      double acceleration = std::clamp(speed_difference, -max_acceleration, max_acceleration); // 加速度を制限
+
+      // 新しい速度を計算
+      double new_speed = current_speed + acceleration;
+      new_speed = std::clamp(new_speed, 0.0, 8.3); // 最大速度を8.3に制限
+
+      // 加速度と速度を設定
+      ackermann_cmd.longitudinal.speed = new_speed; // 新しい速度を設定
+      ackermann_cmd.longitudinal.acceleration = acceleration; // 加速度を設定
+
       ackermann_cmd.lateral.steering_tire_angle = steering_angle;
 
       pub_cmd_->publish(ackermann_cmd);
       AckermannControlCommand raw_cmd = ackermann_cmd;
       raw_cmd.lateral.steering_tire_angle /= params_.STEERING_TIRE_ANGLE_GAIN;  // Invert the gain for raw angle
       pub_raw_cmd_->publish(raw_cmd);
+
+      std::cout << "speed: " << ackermann_cmd.longitudinal.speed << ", acceleration: " << ackermann_cmd.longitudinal.acceleration << std::endl;
+      std::cout << "speed: " << ackermann_cmd.longitudinal.speed << ", acceleration: " << ackermann_cmd.longitudinal.acceleration << std::endl;
+      std::cout << "speed: " << ackermann_cmd.longitudinal.speed << ", acceleration: " << ackermann_cmd.longitudinal.acceleration << std::endl;
+      std::cout << "speed: " << ackermann_cmd.longitudinal.speed << ", acceleration: " << ackermann_cmd.longitudinal.acceleration << std::endl;
+
+
     } else {
       // Handle cases with insufficient path points
       ackermann_cmd.longitudinal.speed = 0.0;
